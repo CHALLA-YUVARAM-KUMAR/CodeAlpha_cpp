@@ -1,0 +1,212 @@
+#include <iostream>
+#include <iomanip>
+#include <string>
+using namespace std;
+
+// ─── Function Prototypes ───────────────────────────────────────────────
+void displayHeader();
+void displayDivider();
+string getLetterGrade(float grade);
+string getClassification(float cgpa);
+void displayCourseTable(string names[], float grades[], float credits[], float gp[], int n);
+void displaySummary(float totalCredits, float totalGP, float cgpa, int numCourses);
+void displayProgressBar(float cgpa);
+
+// ─── Main Function ─────────────────────────────────────────────────────
+int main() {
+    int numSemesters;
+
+    displayHeader();
+
+    cout << "\nEnter the number of semesters: ";
+    cin >> numSemesters;
+
+    float overallTotalCredits = 0;
+    float overallTotalGP      = 0;
+    float semesterGPAs[10];
+
+    for (int s = 0; s < numSemesters; s++) {
+        int numCourses;
+
+        cout << "\n";
+        displayDivider();
+        cout << "  SEMESTER " << (s + 1) << " DETAILS" << endl;
+        displayDivider();
+
+        cout << "Enter number of courses in Semester " << (s + 1) << ": ";
+        cin >> numCourses;
+
+        string courseNames[20];
+        float  grades[20];
+        float  creditHours[20];
+        float  gradePoints[20];
+
+        float semTotalCredits = 0;
+        float semTotalGP      = 0;
+
+        cout << "\n--- Enter Course Details for Semester " << (s + 1) << " ---\n" << endl;
+
+        for (int i = 0; i < numCourses; i++) {
+            cout << "  Course " << (i + 1) << " Name    : ";
+            cin.ignore();
+            getline(cin, courseNames[i]);
+
+            // Grade validation
+            do {
+                cout << "  Grade (0.0 - 4.0)  : ";
+                cin >> grades[i];
+                if (grades[i] < 0.0 || grades[i] > 4.0)
+                    cout << "  [!] Invalid grade! Please enter between 0.0 and 4.0\n";
+            } while (grades[i] < 0.0 || grades[i] > 4.0);
+
+            // Credit hours validation
+            do {
+                cout << "  Credit Hours (1-6) : ";
+                cin >> creditHours[i];
+                if (creditHours[i] < 1 || creditHours[i] > 6)
+                    cout << "  [!] Invalid credits! Please enter between 1 and 6\n";
+            } while (creditHours[i] < 1 || creditHours[i] > 6);
+
+            gradePoints[i]  = grades[i] * creditHours[i];
+            semTotalCredits += creditHours[i];
+            semTotalGP      += gradePoints[i];
+
+            cout << "  Letter Grade       : " << getLetterGrade(grades[i]) << "\n\n";
+        }
+
+        float semGPA = semTotalGP / semTotalCredits;
+        semesterGPAs[s] = semGPA;
+
+        overallTotalCredits += semTotalCredits;
+        overallTotalGP      += semTotalGP;
+
+        // Display semester course table
+        cout << "\n";
+        displayCourseTable(courseNames, grades, creditHours, gradePoints, numCourses);
+
+        // Semester summary
+        cout << "\n  Semester Total Credits : " << fixed << setprecision(1) << semTotalCredits << endl;
+        cout << "  Semester Total GP      : " << fixed << setprecision(2) << semTotalGP      << endl;
+        cout << "  Semester GPA           : " << fixed << setprecision(2) << semGPA          << " / 4.0" << endl;
+        cout << "  Semester Classification: " << getClassification(semGPA)                   << endl;
+    }
+
+    // ─── Overall CGPA ──────────────────────────────────────────────────
+    float cgpa = overallTotalGP / overallTotalCredits;
+
+    cout << "\n";
+    displayDivider();
+    cout << "  OVERALL ACADEMIC REPORT" << endl;
+    displayDivider();
+
+    // Semester GPA trend
+    cout << "\n  Semester-wise GPA Trend:\n" << endl;
+    for (int s = 0; s < numSemesters; s++) {
+        cout << "  Semester " << (s + 1) << "  |  ";
+        int bars = (int)(semesterGPAs[s] / 4.0 * 30);
+        for (int b = 0; b < bars; b++) cout << "#";
+        cout << "  " << fixed << setprecision(2) << semesterGPAs[s] << endl;
+    }
+
+    displaySummary(overallTotalCredits, overallTotalGP, cgpa, numSemesters);
+    displayProgressBar(cgpa);
+
+    // Grade scale reference
+    cout << "\n";
+    displayDivider();
+    cout << "  GRADE SCALE REFERENCE" << endl;
+    displayDivider();
+    cout << "  A+  = 4.0  |  Excellent"    << endl;
+    cout << "  A   = 4.0  |  Excellent"    << endl;
+    cout << "  A-  = 3.7  |  Very Good"    << endl;
+    cout << "  B+  = 3.3  |  Good"         << endl;
+    cout << "  B   = 3.0  |  Good"         << endl;
+    cout << "  B-  = 2.7  |  Above Average"<< endl;
+    cout << "  C+  = 2.3  |  Average"      << endl;
+    cout << "  C   = 2.0  |  Average"      << endl;
+    cout << "  C-  = 1.7  |  Below Average"<< endl;
+    cout << "  D   = 1.0  |  Poor"         << endl;
+    cout << "  F   = 0.0  |  Fail"         << endl;
+    displayDivider();
+
+    cout << "\n  Thank you for using CGPA Calculator!" << endl;
+    cout << "  Good luck with your studies!\n" << endl;
+    displayDivider();
+
+    return 0;
+}
+
+// ─── Function Definitions ──────────────────────────────────────────────
+
+void displayHeader() {
+    cout << "  ==========================================" << endl;
+    cout << "       CGPA CALCULATOR - ACADEMIC TOOL      " << endl;
+    cout << "        Multi-Semester GPA Tracker v2.0     " << endl;
+    cout << "  ==========================================" << endl;
+}
+
+void displayDivider() {
+    cout << "  ------------------------------------------" << endl;
+}
+
+string getLetterGrade(float grade) {
+    if (grade >= 4.0)  return "A+ (Excellent)";
+    if (grade >= 3.7)  return "A- (Very Good)";
+    if (grade >= 3.3)  return "B+ (Good)";
+    if (grade >= 3.0)  return "B  (Good)";
+    if (grade >= 2.7)  return "B- (Above Average)";
+    if (grade >= 2.3)  return "C+ (Average)";
+    if (grade >= 2.0)  return "C  (Average)";
+    if (grade >= 1.7)  return "C- (Below Average)";
+    if (grade >= 1.0)  return "D  (Poor)";
+    return                    "F  (Fail)";
+}
+
+string getClassification(float cgpa) {
+    if (cgpa >= 3.7)  return "Distinction / Dean's List";
+    if (cgpa >= 3.3)  return "First Class Honours";
+    if (cgpa >= 3.0)  return "Second Class Upper";
+    if (cgpa >= 2.7)  return "Second Class Lower";
+    if (cgpa >= 2.0)  return "Third Class / Pass";
+    return                   "Fail - Below Minimum Requirement";
+}
+
+void displayCourseTable(string names[], float grades[], float credits[], float gp[], int n) {
+    cout << "  " << left
+         << setw(22) << "Course Name"
+         << setw(8)  << "Grade"
+         << setw(10) << "Credits"
+         << setw(13) << "Grade Pts"
+         << setw(20) << "Letter Grade" << endl;
+
+    cout << "  ------------------------------------------------------------------" << endl;
+
+    for (int i = 0; i < n; i++) {
+        cout << "  " << left
+             << setw(22) << names[i]
+             << setw(8)  << fixed << setprecision(1) << grades[i]
+             << setw(10) << credits[i]
+             << setw(13) << setprecision(2) << gp[i]
+             << setw(20) << getLetterGrade(grades[i]) << endl;
+    }
+
+    cout << "  ------------------------------------------------------------------" << endl;
+}
+
+void displaySummary(float totalCredits, float totalGP, float cgpa, int numSemesters) {
+    cout << "\n  Total Semesters Completed : " << numSemesters                            << endl;
+    cout << "  Total Credit Hours Earned : " << fixed << setprecision(1) << totalCredits << endl;
+    cout << "  Total Grade Points Earned : " << fixed << setprecision(2) << totalGP      << endl;
+    cout << "  ----------------------------------------" << endl;
+    cout << "  >> FINAL CGPA             : " << fixed << setprecision(2) << cgpa << " / 4.0" << endl;
+    cout << "  >> Classification         : " << getClassification(cgpa)                  << endl;
+    cout << "  ----------------------------------------" << endl;
+}
+
+void displayProgressBar(float cgpa) {
+    int filled = (int)((cgpa / 4.0) * 40);
+    cout << "\n  CGPA Progress  [";
+    for (int i = 0; i < 40; i++)
+        cout << (i < filled ? "=" : "-");
+    cout << "]  " << fixed << setprecision(2) << cgpa << " / 4.0\n";
+}
