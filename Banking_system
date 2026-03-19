@@ -1,0 +1,501 @@
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <vector>
+#include <ctime>
+using namespace std;
+
+// ═══════════════════════════════════════════════════════════════
+//  TRANSACTION CLASS
+// ═══════════════════════════════════════════════════════════════
+class Transaction {
+private:
+    string transactionID;
+    string type;         // Deposit, Withdrawal, Transfer
+    float  amount;
+    float  balanceAfter;
+    string timestamp;
+    string description;
+
+public:
+    Transaction(string id, string t, float amt, float bal, string desc) {
+        transactionID = id;
+        type          = t;
+        amount        = amt;
+        balanceAfter  = bal;
+        description   = desc;
+
+        // Get current time
+        time_t now = time(0);
+        char buf[20];
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+        timestamp = string(buf);
+    }
+
+    void display() const {
+        cout << "  | " << left
+             << setw(14) << transactionID
+             << setw(12) << type
+             << setw(12) << fixed << setprecision(2) << amount
+             << setw(14) << balanceAfter
+             << setw(21) << timestamp
+             << description << endl;
+    }
+
+    string getType()   const { return type;   }
+    float  getAmount() const { return amount; }
+    string getID()     const { return transactionID; }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  ACCOUNT CLASS
+// ═══════════════════════════════════════════════════════════════
+class Account {
+private:
+    string accountNumber;
+    string accountType;    // Savings / Current
+    float  balance;
+    float  minimumBalance;
+    bool   isActive;
+    vector<Transaction> transactionHistory;
+    int    transactionCounter;
+
+    string generateTxnID() {
+        transactionCounter++;
+        return "TXN" + to_string(transactionCounter * 1000 + rand() % 999);
+    }
+
+public:
+    Account(string accNo, string accType, float initialDeposit) {
+        accountNumber      = accNo;
+        accountType        = accType;
+        balance            = initialDeposit;
+        minimumBalance     = (accType == "Savings") ? 500.0f : 1000.0f;
+        isActive           = true;
+        transactionCounter = 0;
+
+        // Log opening deposit
+        transactionHistory.push_back(
+            Transaction(generateTxnID(), "Deposit", initialDeposit, balance, "Account Opening Deposit")
+        );
+    }
+
+    // ── Deposit ──────────────────────────────────────────────
+    bool deposit(float amount) {
+        if (!isActive) {
+            cout << "  [!] Account is inactive!\n";
+            return false;
+        }
+        if (amount <= 0) {
+            cout << "  [!] Invalid deposit amount!\n";
+            return false;
+        }
+        balance += amount;
+        transactionHistory.push_back(
+            Transaction(generateTxnID(), "Deposit", amount, balance, "Cash Deposit")
+        );
+        cout << "  [✓] Deposit of $" << fixed << setprecision(2) << amount << " successful!\n";
+        cout << "  [✓] New Balance: $" << balance << "\n";
+        return true;
+    }
+
+    // ── Withdrawal ───────────────────────────────────────────
+    bool withdraw(float amount) {
+        if (!isActive) {
+            cout << "  [!] Account is inactive!\n";
+            return false;
+        }
+        if (amount <= 0) {
+            cout << "  [!] Invalid withdrawal amount!\n";
+            return false;
+        }
+        if ((balance - amount) < minimumBalance) {
+            cout << "  [!] Insufficient funds! Minimum balance of $"
+                 << minimumBalance << " must be maintained.\n";
+            return false;
+        }
+        balance -= amount;
+        transactionHistory.push_back(
+            Transaction(generateTxnID(), "Withdrawal", amount, balance, "Cash Withdrawal")
+        );
+        cout << "  [✓] Withdrawal of $" << fixed << setprecision(2) << amount << " successful!\n";
+        cout << "  [✓] Remaining Balance: $" << balance << "\n";
+        return true;
+    }
+
+    // ── Transfer Out ─────────────────────────────────────────
+    bool transferOut(float amount, string toAccount) {
+        if (!isActive) {
+            cout << "  [!] Account is inactive!\n";
+            return false;
+        }
+        if ((balance - amount) < minimumBalance) {
+            cout << "  [!] Insufficient funds for transfer!\n";
+            return false;
+        }
+        balance -= amount;
+        transactionHistory.push_back(
+            Transaction(generateTxnID(), "Transfer", amount, balance, "Transfer to Acc: " + toAccount)
+        );
+        return true;
+    }
+
+    // ── Transfer In ──────────────────────────────────────────
+    void transferIn(float amount, string fromAccount) {
+        balance += amount;
+        transactionHistory.push_back(
+            Transaction(generateTxnID(), "Transfer", amount, balance, "Transfer from Acc: " + fromAccount)
+        );
+    }
+
+    // ── Display Account Info ─────────────────────────────────
+    void displayInfo() const {
+        cout << "\n  ╔══════════════════════════════════════╗" << endl;
+        cout << "  ║         ACCOUNT INFORMATION          ║" << endl;
+        cout << "  ╠══════════════════════════════════════╣" << endl;
+        cout << "  ║  Account No   : " << left << setw(21) << accountNumber  << "║" << endl;
+        cout << "  ║  Account Type : " << left << setw(21) << accountType    << "║" << endl;
+        cout << "  ║  Balance      : $" << left << setw(20) << fixed << setprecision(2) << balance << "║" << endl;
+        cout << "  ║  Min Balance  : $" << left << setw(20) << minimumBalance << "║" << endl;
+        cout << "  ║  Status       : " << left << setw(21) << (isActive ? "Active" : "Inactive") << "║" << endl;
+        cout << "  ╚══════════════════════════════════════╝" << endl;
+    }
+
+    // ── Display Transaction History ──────────────────────────
+    void displayTransactions(int limit = 10) const {
+        cout << "\n  ┌─────────────────────────────────────────────────────────────────────────┐" << endl;
+        cout << "  │                     TRANSACTION HISTORY                                │" << endl;
+        cout << "  ├─────────────────────────────────────────────────────────────────────────┤" << endl;
+        cout << "  | " << left
+             << setw(14) << "Txn ID"
+             << setw(12) << "Type"
+             << setw(12) << "Amount($)"
+             << setw(14) << "Balance($)"
+             << setw(21) << "Date & Time"
+             << "Description" << endl;
+        cout << "  |─────────────────────────────────────────────────────────────────────────|" << endl;
+
+        int start = max(0, (int)transactionHistory.size() - limit);
+        for (int i = start; i < (int)transactionHistory.size(); i++) {
+            transactionHistory[i].display();
+        }
+        cout << "  └─────────────────────────────────────────────────────────────────────────┘" << endl;
+        cout << "  Total Transactions: " << transactionHistory.size() << endl;
+    }
+
+    // ── Getters ──────────────────────────────────────────────
+    string getAccountNumber() const { return accountNumber; }
+    float  getBalance()       const { return balance;        }
+    string getAccountType()   const { return accountType;    }
+    bool   getIsActive()      const { return isActive;       }
+    void   deactivate()             { isActive = false;      }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOMER CLASS
+// ═══════════════════════════════════════════════════════════════
+class Customer {
+private:
+    string customerID;
+    string name;
+    string email;
+    string phone;
+    string address;
+    string dateOfBirth;
+    vector<Account> accounts;
+    int accountCounter;
+
+public:
+    Customer(string id, string n, string e, string ph, string addr, string dob) {
+        customerID     = id;
+        name           = n;
+        email          = e;
+        phone          = ph;
+        address        = addr;
+        dateOfBirth    = dob;
+        accountCounter = 0;
+    }
+
+    // ── Create Account ───────────────────────────────────────
+    string createAccount(string type, float initialDeposit) {
+        accountCounter++;
+        string accNo = customerID + "ACC" + to_string(accountCounter);
+        accounts.push_back(Account(accNo, type, initialDeposit));
+        cout << "  [✓] Account created successfully!\n";
+        cout << "  [✓] Account Number: " << accNo << "\n";
+        return accNo;
+    }
+
+    // ── Find Account ─────────────────────────────────────────
+    Account* findAccount(string accNo) {
+        for (auto& acc : accounts)
+            if (acc.getAccountNumber() == accNo) return &acc;
+        return nullptr;
+    }
+
+    // ── Display Customer Profile ─────────────────────────────
+    void displayProfile() const {
+        cout << "\n  ╔══════════════════════════════════════╗" << endl;
+        cout << "  ║         CUSTOMER PROFILE             ║" << endl;
+        cout << "  ╠══════════════════════════════════════╣" << endl;
+        cout << "  ║  Customer ID  : " << left << setw(21) << customerID   << "║" << endl;
+        cout << "  ║  Name         : " << left << setw(21) << name         << "║" << endl;
+        cout << "  ║  Email        : " << left << setw(21) << email        << "║" << endl;
+        cout << "  ║  Phone        : " << left << setw(21) << phone        << "║" << endl;
+        cout << "  ║  Date of Birth: " << left << setw(21) << dateOfBirth  << "║" << endl;
+        cout << "  ║  Address      : " << left << setw(21) << address      << "║" << endl;
+        cout << "  ║  Total Accounts: " << left << setw(20) << accounts.size() << "║" << endl;
+        cout << "  ╚══════════════════════════════════════╝" << endl;
+    }
+
+    // ── Display All Accounts ─────────────────────────────────
+    void displayAllAccounts() const {
+        cout << "\n  Accounts for Customer: " << name << endl;
+        cout << "  ──────────────────────────────────────────" << endl;
+        if (accounts.empty()) {
+            cout << "  No accounts found.\n";
+            return;
+        }
+        for (const auto& acc : accounts)
+            acc.displayInfo();
+    }
+
+    // ── Getters ──────────────────────────────────────────────
+    string getCustomerID() const { return customerID; }
+    string getName()       const { return name;       }
+    vector<Account>& getAccounts() { return accounts; }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  BANK CLASS (Main Controller)
+// ═══════════════════════════════════════════════════════════════
+class Bank {
+private:
+    string bankName;
+    vector<Customer> customers;
+    int customerCounter;
+
+    void displayHeader() {
+        cout << "\n  ╔══════════════════════════════════════════╗" << endl;
+        cout << "  ║     WELCOME TO " << left << setw(26) << (bankName + " BANK") << "║" << endl;
+        cout << "  ║         BANKING MANAGEMENT SYSTEM        ║" << endl;
+        cout << "  ╚══════════════════════════════════════════╝" << endl;
+    }
+
+    void displayDivider() {
+        cout << "  ──────────────────────────────────────────" << endl;
+    }
+
+public:
+    Bank(string name) {
+        bankName        = name;
+        customerCounter = 0;
+    }
+
+    // ── Add Customer ─────────────────────────────────────────
+    string addCustomer(string name, string email, string phone, string address, string dob) {
+        customerCounter++;
+        string id = "CUST" + to_string(1000 + customerCounter);
+        customers.push_back(Customer(id, name, email, phone, address, dob));
+        cout << "  [✓] Customer registered successfully!\n";
+        cout << "  [✓] Customer ID: " << id << "\n";
+        return id;
+    }
+
+    // ── Find Customer ────────────────────────────────────────
+    Customer* findCustomer(string custID) {
+        for (auto& c : customers)
+            if (c.getCustomerID() == custID) return &c;
+        return nullptr;
+    }
+
+    // ── Deposit ──────────────────────────────────────────────
+    void deposit(string custID, string accNo, float amount) {
+        Customer* c = findCustomer(custID);
+        if (!c) { cout << "  [!] Customer not found!\n"; return; }
+        Account* a = c->findAccount(accNo);
+        if (!a) { cout << "  [!] Account not found!\n"; return; }
+        a->deposit(amount);
+    }
+
+    // ── Withdraw ─────────────────────────────────────────────
+    void withdraw(string custID, string accNo, float amount) {
+        Customer* c = findCustomer(custID);
+        if (!c) { cout << "  [!] Customer not found!\n"; return; }
+        Account* a = c->findAccount(accNo);
+        if (!a) { cout << "  [!] Account not found!\n"; return; }
+        a->withdraw(amount);
+    }
+
+    // ── Fund Transfer ────────────────────────────────────────
+    void transfer(string fromCustID, string fromAccNo,
+                  string toCustID,   string toAccNo, float amount) {
+        Customer* fromCust = findCustomer(fromCustID);
+        Customer* toCust   = findCustomer(toCustID);
+
+        if (!fromCust || !toCust) { cout << "  [!] Customer not found!\n"; return; }
+
+        Account* fromAcc = fromCust->findAccount(fromAccNo);
+        Account* toAcc   = toCust->findAccount(toAccNo);
+
+        if (!fromAcc || !toAcc) { cout << "  [!] Account not found!\n"; return; }
+
+        if (fromAcc->transferOut(amount, toAccNo)) {
+            toAcc->transferIn(amount, fromAccNo);
+            cout << "  [✓] Transfer of $" << fixed << setprecision(2) << amount << " successful!\n";
+            cout << "  [✓] From: " << fromAccNo << "  →  To: " << toAccNo << "\n";
+        }
+    }
+
+    // ── View Transactions ────────────────────────────────────
+    void viewTransactions(string custID, string accNo, int limit = 10) {
+        Customer* c = findCustomer(custID);
+        if (!c) { cout << "  [!] Customer not found!\n"; return; }
+        Account* a = c->findAccount(accNo);
+        if (!a) { cout << "  [!] Account not found!\n"; return; }
+        a->displayTransactions(limit);
+    }
+
+    // ── Main Menu ────────────────────────────────────────────
+    void run() {
+        displayHeader();
+        int choice;
+
+        do {
+            cout << "\n  ╔══════════════════════════════════════╗" << endl;
+            cout << "  ║              MAIN MENU               ║" << endl;
+            cout << "  ╠══════════════════════════════════════╣" << endl;
+            cout << "  ║  1. Register New Customer            ║" << endl;
+            cout << "  ║  2. Open New Account                 ║" << endl;
+            cout << "  ║  3. Deposit Money                    ║" << endl;
+            cout << "  ║  4. Withdraw Money                   ║" << endl;
+            cout << "  ║  5. Transfer Funds                   ║" << endl;
+            cout << "  ║  6. View Transaction History         ║" << endl;
+            cout << "  ║  7. View Account Information         ║" << endl;
+            cout << "  ║  8. View Customer Profile            ║" << endl;
+            cout << "  ║  0. Exit                             ║" << endl;
+            cout << "  ╚══════════════════════════════════════╝" << endl;
+            cout << "\n  Enter your choice: ";
+            cin >> choice;
+
+            string custID, accNo, accNo2, custID2, type;
+            float amount;
+
+            switch (choice) {
+
+                case 1: {
+                    string name, email, phone, addr, dob;
+                    cout << "\n  -- REGISTER NEW CUSTOMER --\n";
+                    cin.ignore();
+                    cout << "  Full Name    : "; getline(cin, name);
+                    cout << "  Email        : "; getline(cin, email);
+                    cout << "  Phone        : "; getline(cin, phone);
+                    cout << "  Address      : "; getline(cin, addr);
+                    cout << "  Date of Birth: "; getline(cin, dob);
+                    addCustomer(name, email, phone, addr, dob);
+                    break;
+                }
+
+                case 2: {
+                    cout << "\n  -- OPEN NEW ACCOUNT --\n";
+                    cout << "  Customer ID  : "; cin >> custID;
+                    cout << "  Account Type (Savings/Current): "; cin >> type;
+                    cout << "  Initial Deposit ($): "; cin >> amount;
+                    Customer* c = findCustomer(custID);
+                    if (c) c->createAccount(type, amount);
+                    else   cout << "  [!] Customer not found!\n";
+                    break;
+                }
+
+                case 3: {
+                    cout << "\n  -- DEPOSIT MONEY --\n";
+                    cout << "  Customer ID  : "; cin >> custID;
+                    cout << "  Account No   : "; cin >> accNo;
+                    cout << "  Amount ($)   : "; cin >> amount;
+                    deposit(custID, accNo, amount);
+                    break;
+                }
+
+                case 4: {
+                    cout << "\n  -- WITHDRAW MONEY --\n";
+                    cout << "  Customer ID  : "; cin >> custID;
+                    cout << "  Account No   : "; cin >> accNo;
+                    cout << "  Amount ($)   : "; cin >> amount;
+                    withdraw(custID, accNo, amount);
+                    break;
+                }
+
+                case 5: {
+                    cout << "\n  -- FUND TRANSFER --\n";
+                    cout << "  From Customer ID : "; cin >> custID;
+                    cout << "  From Account No  : "; cin >> accNo;
+                    cout << "  To Customer ID   : "; cin >> custID2;
+                    cout << "  To Account No    : "; cin >> accNo2;
+                    cout << "  Amount ($)       : "; cin >> amount;
+                    transfer(custID, accNo, custID2, accNo2, amount);
+                    break;
+                }
+
+                case 6: {
+                    cout << "\n  -- TRANSACTION HISTORY --\n";
+                    cout << "  Customer ID  : "; cin >> custID;
+                    cout << "  Account No   : "; cin >> accNo;
+                    cout << "  Last N records (e.g. 10): "; int n; cin >> n;
+                    viewTransactions(custID, accNo, n);
+                    break;
+                }
+
+                case 7: {
+                    cout << "\n  -- ACCOUNT INFORMATION --\n";
+                    cout << "  Customer ID  : "; cin >> custID;
+                    Customer* c = findCustomer(custID);
+                    if (c) c->displayAllAccounts();
+                    else   cout << "  [!] Customer not found!\n";
+                    break;
+                }
+
+                case 8: {
+                    cout << "\n  -- CUSTOMER PROFILE --\n";
+                    cout << "  Customer ID  : "; cin >> custID;
+                    Customer* c = findCustomer(custID);
+                    if (c) c->displayProfile();
+                    else   cout << "  [!] Customer not found!\n";
+                    break;
+                }
+
+                case 0:
+                    cout << "\n  Thank you for using " << bankName << " Bank!\n";
+                    cout << "  Goodbye!\n\n";
+                    break;
+
+                default:
+                    cout << "  [!] Invalid choice! Try again.\n";
+            }
+
+        } while (choice != 0);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN
+// ═══════════════════════════════════════════════════════════════
+int main() {
+    srand(time(0));
+    Bank myBank("SECURE");
+    myBank.run();
+    return 0;
+}
+/*```
+
+---
+
+**Class Structure Overview:**
+```
+Bank
+ ├── Customer[]
+ │    ├── customerID, name, email, phone, address, DOB
+ │    └── Account[]
+ │         ├── accountNumber, type, balance, minBalance
+ │         └── Transaction[]
+ │              ├── txnID, type, amount, balanceAfter
+ │              └── timestamp, description*/
